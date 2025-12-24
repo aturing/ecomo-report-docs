@@ -28,6 +28,7 @@ Las etiquetas siguen el formato de Jinja2: `{{ nombre_variable }}`
 
 ### Funcionamiento:
 - El sistema buscará entre todas las imágenes aquella que contenga el texto especificado
+- El texto a buscar debe escribirse sin tildes ni ñs, independientemente de que el texto de la imagen contenga tildes o no.
 - La imagen se insertará en el documento en la posición de la etiqueta
 
 ### Reglas:

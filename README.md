@@ -8,6 +8,29 @@ Solo necesitas insertar **etiquetas especiales** en tu documento Word, y el prog
 
 ---
 
+## 📥 Descarga e Instalación
+
+### Descargar
+
+Descarga la última versión del instalador:
+
+➡️ **[Descargar ECOMO Report](ECOMO_Report_latest.pkg)**
+
+### Instalación en macOS
+
+1. Descarga el archivo `.pkg` desde el enlace anterior
+2. Haz doble clic en el archivo descargado
+3. Sigue las instrucciones del instalador
+4. Una vez instalado, podrás acceder a ECOMO Report desde el menú de Servicios del Finder
+
+### Uso
+
+1. Selecciona la plantilla del informe que deseas generar. La plantilla deberá estar en la misma carpeta donde se encuentre una carpeta imagenes con las ecografías.
+2. Haz clic derecho y selecciona **Servicios > Crear informe**
+4. El informe se generará automáticamente
+
+---
+
 ## 🏷️ Sintaxis de Etiquetas
 
 Las etiquetas siguen el formato de Jinja2: `{{ nombre_variable }}`
@@ -21,36 +44,72 @@ Las etiquetas siguen el formato de Jinja2: `{{ nombre_variable }}`
 
 ## 🖼️ Insertar Imágenes
 
-### Sintaxis:
-```
-{{ IMG_texto_a_buscar }}
-```
-
 ### Funcionamiento:
-- El sistema buscará entre todas las imágenes aquella que contenga el texto especificado
+- Las variables `IMG_` son **listas de imágenes** que contienen todas las imágenes que coinciden con el texto especificado
+- El sistema buscará entre todas las imágenes aquellas que contengan el texto especificado
 - El texto a buscar debe escribirse sin tildes ni ñs, independientemente de que el texto de la imagen contenga tildes o no.
-- La imagen se insertará en el documento en la posición de la etiqueta
 
 ### Reglas:
 - Usa **guiones bajos `_`** para representar espacios
 - El texto debe aparecer en la imagen (será detectado por OCR)
 
-### Ejemplos:
+---
+
+### Insertar una única imagen
+
+Cuando solo existe **una imagen** con esa etiqueta, o cuando quieres insertar **solo la primera** imagen de la lista, utiliza el filtro `first`:
+
+#### Sintaxis:
+```
+{{ IMG_texto_a_buscar | first }}
+```
+
+#### Ejemplos:
 
 ```
-{{ IMG_ecografia_renal }}
+{{ IMG_ecografia_renal | first }}
 ```
-→ Inserta la imagen que contenga el texto "ecografia renal"
+→ Inserta la primera imagen que contenga el texto "ecografia renal"
 
 ```
-{{ IMG_4_camaras }}
+{{ IMG_4_camaras | first }}
 ```
-→ Inserta la imagen que contenga el texto "4 camaras"
+→ Inserta la primera imagen que contenga el texto "4 camaras"
 
 ```
-{{ IMG_doppler_color }}
+{{ IMG_doppler_color | first }}
 ```
-→ Inserta la imagen que contenga el texto "doppler color"
+→ Inserta la primera imagen que contenga el texto "doppler color"
+
+---
+
+### Insertar múltiples imágenes
+
+Cuando existen **varias imágenes** con la misma etiqueta y quieres insertarlas todas, utiliza un bucle `for`:
+
+#### Sintaxis:
+```
+{%tr for img in IMG_texto_a_buscar %}  {{ img }}  {%tr endfor %}
+```
+
+> **Nota:** `{%tr ... %}` indica que el bucle se aplica a nivel de fila de tabla (table row). Esto es útil para insertar cada imagen en una fila separada.
+
+#### Ejemplos:
+
+```
+{%tr for img in IMG_pulmon %}  {{ img }}  {%tr endfor %}
+```
+→ Inserta todas las imágenes que contengan el texto "pulmon", cada una en una fila
+
+```
+{%tr for img in IMG_ecografia_renal %}  {{ img }}  {%tr endfor %}
+```
+→ Inserta todas las imágenes que contengan el texto "ecografia renal"
+
+```
+{%tr for img in IMG_doppler %}  {{ img }}  {%tr endfor %}
+```
+→ Inserta todas las imágenes que contengan el texto "doppler"
 
 ---
 
@@ -144,6 +203,12 @@ Si extrae `2.34` → Multiplica por 10 → `23.4` → Resultado: `23.4`
 
 ### Filtros de Texto:
 
+#### `first` - Obtener el primer elemento de una lista
+```
+{{ IMG_ecografia | first }}
+```
+Obtiene la primera imagen de la lista → útil cuando `IMG_` devuelve múltiples imágenes pero solo necesitas una
+
 #### `upper` - Convertir a MAYÚSCULAS
 ```
 {{ TXT_codigo__fin | upper }}
@@ -197,10 +262,10 @@ FECHA: 15/12/2024
 IMÁGENES PRINCIPALES:
 
 Vista 4 Cámaras:
-{{ IMG_4_camaras }}
+{{ IMG_4_camaras | first }}
 
 Doppler Tisular:
-{{ IMG_doppler_tisular }}
+{{ IMG_doppler_tisular | first }}
 
 ---
 
@@ -304,7 +369,7 @@ Bazo: {{ TXT_bazo__cm }} cm
 
 Si encuentras problemas o necesitas ayuda:
 
-1. Revisa el archivo `word_template_ocr.log` para detalles de errores
+1. Revisa el archivo `ecomo_report.log` para detalles de errores
 2. Verifica que las imágenes sean legibles y tengan buena calidad
 3. Asegúrate de que el texto en las imágenes esté claramente visible
 

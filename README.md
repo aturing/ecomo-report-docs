@@ -14,7 +14,7 @@ Solo necesitas insertar **etiquetas especiales** en tu documento Word, y el prog
 
 Descarga la última versión del instalador:
 
-➡️ **[Descargar ECOMO Report](/ECOMO_Report_latest.pkg)**
+➡️ **[Descargar ECOMO Report](https://aturing.github.io/ecomo-report-docs/ECOMO_Report_latest.pkg)**
 
 ### Instalación en macOS
 

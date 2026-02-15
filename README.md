@@ -117,46 +117,58 @@ Cuando existen **varias imágenes** con la misma etiqueta y quieres insertarlas 
 
 ### Sintaxis:
 ```
-{{ TXT_texto_antes__texto_despues }}
+{{ TXT_texto_antes___texto_despues }}
 ```
 
 ### Funcionamiento:
-- Los **dos guiones bajos `__`** representan el **wildcard** (el valor a extraer)
+- Los **tres guiones bajos `___`** representan el **wildcard** (el valor a extraer)
 - El sistema busca el patrón en las imágenes y extrae el valor entre las dos partes
 
 ### Reglas:
-- Un guión bajo `_` = espacio en blanco
-- Dos guiones bajos `__` = wildcard (valor a extraer)
+- Un guión bajo `_` = uno o varios espacios en blanco (puede haber un carácter cualquiera entre medias para filtrar ruido del OCR)
+- Tres guiones bajos `___` = wildcard (valor a extraer)
+- Cuatro guiones bajos `____` = indica que puede haber un carácter extra antes del wildcard
 
 ### Ejemplos:
 
 #### Ejemplo 1: Extraer un valor numérico simple
 ```
-{{ TXT_volumen__ml }}
+{{ TXT_volumen___ml }}
 ```
-Si en la imagen aparece: **"volumen 350 ml"**  
+Si en la imagen aparece: **"volumen 350 ml"**
 → Extrae: `350`
 
 #### Ejemplo 2: Extraer con espacios en el patrón
 ```
-{{ TXT_frecuencia_cardiaca__bpm }}
+{{ TXT_frecuencia_cardiaca___bpm }}
 ```
-Si en la imagen aparece: **"frecuencia cardiaca 145 bpm"**  
+Si en la imagen aparece: **"frecuencia cardiaca 145 bpm"**
 → Extrae: `145`
+
+> **Nota sobre espacios:** El guión bajo `_` permite uno o varios espacios en blanco, e incluso puede filtrar un carácter de ruido del OCR. Por ejemplo, si el OCR detecta "frecuencia  .cardiaca" o "frecuencia cardiaca", el patrón `frecuencia_cardiaca` coincidirá en ambos casos.
 
 #### Ejemplo 3: Extraer valores con decimales
 ```
-{{ TXT_tapse__cm }}
+{{ TXT_tapse___cm }}
 ```
-Si en la imagen aparece: **"tapse 2.3 cm"**  
+Si en la imagen aparece: **"tapse 2.3 cm"**
 → Extrae: `2.3`
 
 #### Ejemplo 4: Extraer valores complejos
 ```
-{{ TXT_presion_arterial__mmHg }}
+{{ TXT_presion_arterial___mmHg }}
 ```
-Si en la imagen aparece: **"presion arterial 120/80 mmHg"**  
+Si en la imagen aparece: **"presion arterial 120/80 mmHg"**
 → Extrae: `120/80`
+
+#### Ejemplo 5: Extraer con carácter extra antes del wildcard
+```
+{{ TXT_valor____unidad }}
+```
+Si en la imagen aparece: **"valor: 25 unidad"** (con un carácter extra antes del número)
+→ Extrae: `25`
+
+> **Nota:** Los cuatro guiones bajos `____` permiten capturar un carácter adicional antes del wildcard, útil para casos donde el OCR detecta caracteres extra como puntos o dos puntos.
 
 ---
 
@@ -247,6 +259,140 @@ Puedes encadenar varios filtros usando múltiples pipes:
 
 ---
 
+## 🔄 Bucles y Condiciones con Jinja2
+
+Este sistema utiliza el motor de plantillas Jinja2, que permite usar bucles y condiciones para mostrar información de forma dinámica.
+
+### Condiciones: Mostrar contenido solo si existe una variable
+
+Puedes mostrar texto solo cuando una variable existe o tiene un valor específico:
+
+#### Sintaxis:
+```
+{% if variable %}
+    Contenido a mostrar si la variable existe
+{% endif %}
+```
+
+#### Ejemplos:
+
+**Mostrar texto solo si existe un valor:**
+```
+{% if TXT_tapse___cm %}
+TAPSE: {{ TXT_tapse___cm | multiply(10) | round(1) }} mm
+{% endif %}
+```
+→ Solo muestra la línea si se encontró el valor de TAPSE
+
+**Mostrar texto alternativo si no existe:**
+```
+{% if TXT_fevi___porcentaje %}
+Fracción de eyección: {{ TXT_fevi___porcentaje }}%
+{% else %}
+Fracción de eyección: No disponible
+{% endif %}
+```
+
+**Comparar valores:**
+```
+{% if TXT_fc___bpm | float > 100 %}
+ADVERTENCIA: Taquicardia detectada ({{ TXT_fc___bpm }} bpm)
+{% endif %}
+```
+
+### Bucles: Mostrar elementos de una lista
+
+Los bucles son especialmente útiles para insertar múltiples imágenes:
+
+#### Sintaxis para bucles en tablas:
+```
+{%tr for item in lista %}
+    {{ item }}
+{%tr endfor %}
+```
+
+> **Nota:** `{%tr ... %}` indica que el bucle se aplica a nivel de fila de tabla (table row).
+
+#### Ejemplos:
+
+**Insertar todas las imágenes de un tipo:**
+```
+{%tr for img in IMG_pulmon %}
+    {{ img }}
+{%tr endfor %}
+```
+→ Crea una fila por cada imagen que contenga "pulmon"
+
+**Bucle con condición:**
+```
+{%tr for img in IMG_ecografia %}
+    {% if loop.index <= 3 %}
+        {{ img }}
+    {% endif %}
+{%tr endfor %}
+```
+→ Inserta solo las primeras 3 imágenes
+
+**Bucle con numeración:**
+```
+{%tr for img in IMG_corte %}
+    Imagen {{ loop.index }}: {{ img }}
+{%tr endfor %}
+```
+→ Enumera automáticamente las imágenes (1, 2, 3...)
+
+### Combinando condiciones y bucles
+
+**Mostrar tabla solo si hay imágenes:**
+```
+{% if IMG_doppler %}
+IMÁGENES DOPPLER:
+{%tr for img in IMG_doppler %}
+    {{ img }}
+{%tr endfor %}
+{% endif %}
+```
+
+**Mostrar mensaje si no hay imágenes:**
+```
+{% if IMG_ecografia %}
+{%tr for img in IMG_ecografia %}
+    {{ img }}
+{%tr endfor %}
+{% else %}
+No se encontraron imágenes de ecografía
+{% endif %}
+```
+
+### Variables útiles en bucles
+
+Dentro de un bucle `for`, puedes usar estas variables especiales:
+
+- `loop.index` - número de iteración (comienza en 1)
+- `loop.index0` - número de iteración (comienza en 0)
+- `loop.first` - True si es la primera iteración
+- `loop.last` - True si es la última iteración
+- `loop.length` - número total de elementos
+
+#### Ejemplo avanzado:
+```
+{%tr for img in IMG_camaras %}
+    {% if loop.first %}
+        VISTA PRINCIPAL: {{ img }}
+    {% else %}
+        Vista {{ loop.index }}: {{ img }}
+    {% endif %}
+{%tr endfor %}
+```
+
+### 📚 Más información
+
+Para funcionalidades avanzadas de Jinja2 (filtros adicionales, macros, herencia de plantillas, etc.), consulta la documentación oficial:
+
+➡️ **[Documentación oficial de Jinja2](https://jinja.palletsprojects.com/en/stable/templates/)**
+
+---
+
 ## 📄 Ejemplo de Plantilla Completa
 
 ```word
@@ -254,8 +400,8 @@ Puedes encadenar varios filtros usando múltiples pipes:
         INFORME ECOCARDIOGRÁFICO
 ═══════════════════════════════════════
 
-PACIENTE: Dr. García López
-FECHA: 15/12/2024
+PACIENTE: {{ nombre_paciente }}
+FECHA: {{ fecha }}
 
 ---
 
@@ -267,29 +413,41 @@ Vista 4 Cámaras:
 Doppler Tisular:
 {{ IMG_doppler_tisular | first }}
 
+Todas las vistas de cortes:
+{%tr for img in IMG_corte %}
+    {{ img }}
+{%tr endfor %}
+
 ---
 
 MEDICIONES:
 
-• TAPSE: {{ TXT_tapse__cm | multiply(10) | round(1) }} mm
-• Volumen telediastólico: {{ TXT_volumen_td__ml }} ml
-• Volumen telesistólico: {{ TXT_volumen_ts__ml }} ml
-• Fracción de eyección: {{ TXT_fevi__porcentaje }}%
-• Frecuencia cardíaca: {{ TXT_fc__bpm }} bpm
-• Presión arterial: {{ TXT_presion__mmHg }} mmHg
+• TAPSE: {{ TXT_tapse___cm | multiply(10) | round(1) }} mm
+• Volumen telediastólico: {{ TXT_volumen_td___ml }} ml
+• Volumen telesistólico: {{ TXT_volumen_ts___ml }} ml
+• Fracción de eyección: {{ TXT_fevi___porcentaje }}%
+• Frecuencia cardíaca: {{ TXT_fc___bpm }} bpm
+
+{% if TXT_presion___mmHg %}
+• Presión arterial: {{ TXT_presion___mmHg }} mmHg
+{% endif %}
 
 ---
 
 OBSERVACIONES:
 
-Técnica utilizada: {{ TXT_tecnica__observaciones | upper }}
-Calidad de imagen: {{ TXT_calidad__ventana }}
+Técnica utilizada: {{ TXT_tecnica___observaciones | upper }}
+Calidad de imagen: {{ TXT_calidad___ventana }}
 
 ---
 
 CONCLUSIONES:
 
-Contractilidad: {{ TXT_contractilidad__segmentos }}
+{% if TXT_contractilidad___segmentos %}
+Contractilidad: {{ TXT_contractilidad___segmentos }}
+{% else %}
+Contractilidad: Valoración normal
+{% endif %}
 ```
 
 ---
@@ -310,9 +468,10 @@ Contractilidad: {{ TXT_contractilidad__segmentos }}
 - El sistema procesará todas automáticamente
 
 ### 4. Espacios y Guiones Bajos
-- **Un guión bajo `_`** = un espacio
-- **Dos guiones bajos `__`** = wildcard
-- Ejemplo: `TXT_frecuencia_cardiaca__bpm` busca "frecuencia cardiaca X bpm"
+- **Un guión bajo `_`** = uno o varios espacios (puede filtrar ruido del OCR)
+- **Tres guiones bajos `___`** = wildcard (valor a extraer)
+- **Cuatro guiones bajos `____`** = carácter extra antes del wildcard
+- Ejemplo: `TXT_frecuencia_cardiaca___bpm` busca "frecuencia cardiaca X bpm"
 
 ### 5. Manejo de Errores
 - Si no se encuentra una imagen: aparecerá `[Imagen 'texto' no encontrada]`
@@ -344,23 +503,23 @@ Contractilidad: {{ TXT_contractilidad__segmentos }}
 
 ### Ecocardiografía
 ```
-TAPSE: {{ TXT_tapse__cm | multiply(10) | round(1) }} mm
-E/A: {{ TXT_ratio_e_a__adimensional | round(2) }}
-FE: {{ TXT_fevi__porcentaje }}%
+TAPSE: {{ TXT_tapse___cm | multiply(10) | round(1) }} mm
+E/A: {{ TXT_ratio_e_a___adimensional | round(2) }}
+FE: {{ TXT_fevi___porcentaje }}%
 ```
 
 ### Ecografía Obstétrica
 ```
-Edad gestacional: {{ TXT_eg__semanas }} semanas
-Peso fetal estimado: {{ TXT_pfe__g | divide(1000) | round(2) }} kg
-Líquido amniótico: {{ TXT_ila__cm }} cm
+Edad gestacional: {{ TXT_eg___semanas }} semanas
+Peso fetal estimado: {{ TXT_pfe___g | divide(1000) | round(2) }} kg
+Líquido amniótico: {{ TXT_ila___cm }} cm
 ```
 
 ### Ecografía Abdominal
 ```
-Tamaño hepático: {{ TXT_higado__cm }} cm
-Vesícula biliar: {{ TXT_vesicula__descripcion }}
-Bazo: {{ TXT_bazo__cm }} cm
+Tamaño hepático: {{ TXT_higado___cm }} cm
+Vesícula biliar: {{ TXT_vesicula___descripcion }}
+Bazo: {{ TXT_bazo___cm }} cm
 ```
 
 ---
